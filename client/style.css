@@ -1,0 +1,261 @@
+/* Reset and basic layout */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background: #f7f7f7;
+  overflow: hidden;
+}
+
+/* Header */
+header,
+#header {
+  background: #4b6cb7;
+  background: linear-gradient(90deg, #4b6cb7, #182848);
+  color: white;
+  text-align: center;
+  padding: 15px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+header h1,
+#header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+header p,
+#header p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Toolbar */
+#toolbar {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 10;
+  flex-wrap: wrap; /* allow wrapping for smaller screens */
+  max-width: 95%;
+}
+
+#toolbar label {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+#toolbar input[type="color"] {
+  width: 40px;
+  height: 30px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+#toolbar input[type="range"] {
+  width: 120px;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Toolbar buttons */
+#toolbar button {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+#toolbar button:hover {
+  background: #c0392b;
+}
+
+/* 🔹 Additional toolbar button styles for Undo / Redo */
+#toolbar button.action {
+  background: #3498db;
+}
+
+#toolbar button.action:hover {
+  background: #2c82c9;
+}
+
+/* Toolbar separator line */
+#toolbar::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: #ddd;
+  margin-top: 10px;
+}
+
+/* Canvas */
+canvas {
+  position: absolute;
+  top: 140px; /* Push canvas below header + toolbar */
+  left: 0;
+  width: 100%;
+  height: calc(100vh - 140px); /* Dynamic height */
+  cursor: crosshair;
+}
+
+/* 🔹 Optional sidebar (Online Users) */
+#sidebar {
+  position: fixed;
+  top: 140px;
+  left: 0;
+  width: 220px;
+  height: calc(100vh - 140px);
+  background: #ffffff;
+  border-right: 1px solid #ddd;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  padding: 15px;
+  overflow-y: auto;
+  display: none; /* Hidden by default */
+}
+
+#sidebar.active {
+  display: block;
+}
+
+#sidebar h3 {
+  margin-top: 0;
+  color: #182848;
+  font-size: 1rem;
+}
+
+#sidebar ul {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 10px;
+}
+
+#sidebar ul li {
+  margin: 6px 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+/* 🔹 Footer (for status info) */
+footer,
+#footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #182848;
+  color: #fff;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 0.85rem;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* ===================== */
+/* 📱 RESPONSIVE DESIGN  */
+/* ===================== */
+
+/* Tablets and small laptops */
+@media (max-width: 992px) {
+  #toolbar {
+    top: 75px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .toolbar-section {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #toolbar input[type="range"] {
+    width: 100px;
+  }
+
+  canvas {
+    top: 180px;
+    height: calc(100vh - 180px);
+  }
+}
+
+/* Mobile Phones */
+@media (max-width: 600px) {
+  #header h1 {
+    font-size: 1.4rem;
+  }
+
+  #toolbar {
+    top: 70px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    width: 90%;
+  }
+
+  #toolbar label {
+    font-size: 0.8rem;
+  }
+
+  .toolbar-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .toolbar-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  #toolbar button {
+    width: 100%;
+  }
+
+  canvas {
+    top: 200px;
+    height: calc(100vh - 200px);
+  }
+
+  footer,
+  #footer {
+    font-size: 0.8rem;
+    padding: 6px 0;
+  }
+}
