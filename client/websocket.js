@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io("https://real-time-collaborativedrawing-canvas-2.onrender.com");
 const remoteUsers = {};
 
 // 🟢 When another user starts a stroke
