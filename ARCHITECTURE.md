@@ -1,4 +1,6 @@
- 1️⃣ Data Flow Diagram (High-level)
+ 1️. Data Flow Diagram (High-level)
+
+ ```text
 [Pointer / Mouse Events]
      │
      ▼
@@ -21,38 +23,34 @@ All Clients
   • Update local canvas immediately  
   • Re-render canvas deterministically  
   • Keep history synced across all users
+  ```
 
-2️⃣ WebSocket Protocol (Socket.IO Events)
+2️. WebSocket Protocol (Socket.IO Events)
+```text
 Client → Server
-Event	Description	Example Payload
-start	Begin a new stroke	{ userId, x, y }
-draw	Append stroke segment	{ userId, x1, y1, x2, y2, color, strokeWidth, tool }
-clear	Clear canvas for all	{ }
-canvasUpdate	Send full canvas snapshot (undo/redo)	{ image: <base64> }
+──────────────────────
+start         Begin stroke
+draw          Append stroke data
+clear         Clear canvas
+canvasUpdate  Send undo/redo snapshot
+
 Server → Client
-Event	Description	Example Payload
-init	Send full stroke history on join	[ {x1,y1,x2,y2,color,strokeWidth} ]
-draw	Broadcast live stroke segment	{ userId, x1, y1, x2, y2, color, strokeWidth, tool }
-clear	Notify all clients to clear	{ }
-canvasUpdate	Sync undo/redo states globally	{ image: <base64> }
-Protocol Highlights
+──────────────────────
+init          Send full history
+draw          Broadcast stroke
+clear         Sync clear for all
+canvasUpdate  Sync undo/redo
+```
 
-Coordinates are normalized (0–1) for consistent scaling across devices.
 
-destination-out is used for eraser mode (true pixel-level erasing).
 
-Undo/Redo and clear actions are synchronized by broadcasting base64 canvas snapshots.
+3️. Undo/Redo Strategy (Global)
+• Each client maintains undoStack[] & redoStack[]
+• On draw → save snapshot (DataURL)
+• Undo → pop, push to redoStack, restore previous
+• Redo → pop redoStack, restore next
+• Server rebroadcasts updates for all users
 
-The system follows a broadcast-only design — no peer-to-peer connections.
-
-3️⃣ Undo/Redo Strategy (Global)
-Concept	Implementation
-Local History	Each client keeps undoStack and redoStack (max 20 snapshots).
-Snapshot Format	Each state is a DataURL of the canvas image.
-Undo	Pops the last canvas snapshot, restores previous image, emits canvasUpdate.
-Redo	Pushes forward from redoStack, restores image, emits canvasUpdate.
-Synchronization	The server rebroadcasts the updated canvas image to all clients for consistency.
-Global State	All connected users always share the same visual state (last writer wins).
 
 Flow Example:
 
@@ -62,29 +60,27 @@ Emits canvasUpdate →
 Server broadcasts new image →
 All clients restore same snapshot
 
-4️⃣ Performance Decisions
-Optimization	Description
-Normalized Coordinates (0–1)	Keeps drawings aligned across all screen sizes and resolutions.
-Client-side Prediction	User sees immediate strokes while network syncs in the background.
-Batching Stroke Data	Reduces WebSocket message frequency and prevents jitter.
-Canvas Snapshot Limit (20)	Prevents memory bloat while maintaining undo depth.
-destination-out Eraser	Removes pixels efficiently instead of repainting white.
-Efficient Re-render	Canvas clears and redraws only changed areas during updates.
-No External Drawing Libraries	Ensures full control over performance and behavior.
-5️⃣ Conflict Resolution
-Scenario	Resolution
-Two users draw simultaneously	Both strokes are drawn — stroke order defines final render.
-Undo/Redo conflict	The latest canvasUpdate event overwrites previous state (last-write-wins).
-Eraser Overlap	destination-out ensures deterministic erasure across clients.
-Late Joiners	Receive full canvas snapshot (init) and render immediately.
-6️⃣ Edge Cases & Handling
-Case	Handling Strategy
-Late Joiners	Server emits full stroke history (init) upon connection.
-Network Drop	Socket.io auto-reconnects; last canvasUpdate re-syncs full state.
-Resize Events	Canvas resizes responsively; strokes scaled consistently (normalized coordinates).
-Undo After Clear	Clear action is stored as a snapshot, so Undo restores previous canvas.
-Dropped Frames	Minor packet loss tolerated since next stroke/redo event re-synchronizes the state.
-7️⃣ Architectural Summary Diagram
+4️. Performance Decisions
+• Normalized (0–1) coordinates → consistent scaling
+• Downsampled points for efficiency
+• Client-side prediction for low latency
+• Eraser uses "destination-out" blending
+• Undo stack limited to 20 snapshots
+• Broadcast only incremental updates
+
+5️. Conflict Resolution
+• Simultaneous strokes resolved by order
+• Eraser removes pixels (non-destructive blending)
+• Undo/Redo synced globally (last-write-wins)
+• Late joiners receive full canvas snapshot
+
+6️. Edge Cases & Handling
+• Late joiners get complete history on init
+• Socket auto-reconnect on network loss
+• Canvas auto-rescales on window resize
+• Undo works after clear (treated as snapshot)
+
+7️. Architectural Summary Diagram
  ┌──────────────────────────────┐
  │         Client (A)           │
  │  - Canvas Drawing             │
