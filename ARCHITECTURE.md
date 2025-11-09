@@ -1,139 +1,109 @@
- 1. System Overview
+ 1️⃣ Data Flow Diagram (High-level)
+[Pointer / Mouse Events]
+     │
+     ▼
+Client (HTML5 Canvas)
+  • Capture pointer movements  
+  • Smooth + downsample stroke points  
+  • Draw locally (client-side prediction)  
+  • Stream stroke data via WebSocket  
+     │
+     ▼
+Server (Authoritative State)
+  • Handle start/draw/clear events  
+  • Maintain ordered global stroke history  
+  • Broadcast updates to all connected clients  
+  • Synchronize undo/redo (global consistency)  
+     │
+     ▼
+All Clients
+  • Receive broadcasted stroke data  
+  • Update local canvas immediately  
+  • Re-render canvas deterministically  
+  • Keep history synced across all users
 
-This project is a real-time collaborative whiteboard where multiple users can draw simultaneously on a shared HTML5 canvas.
-The synchronization is achieved through WebSockets (Socket.io) for low-latency bidirectional communication between the server and all connected clients.
+2️⃣ WebSocket Protocol (Socket.IO Events)
+Client → Server
+Event	Description	Example Payload
+start	Begin a new stroke	{ userId, x, y }
+draw	Append stroke segment	{ userId, x1, y1, x2, y2, color, strokeWidth, tool }
+clear	Clear canvas for all	{ }
+canvasUpdate	Send full canvas snapshot (undo/redo)	{ image: <base64> }
+Server → Client
+Event	Description	Example Payload
+init	Send full stroke history on join	[ {x1,y1,x2,y2,color,strokeWidth} ]
+draw	Broadcast live stroke segment	{ userId, x1, y1, x2, y2, color, strokeWidth, tool }
+clear	Notify all clients to clear	{ }
+canvasUpdate	Sync undo/redo states globally	{ image: <base64> }
+Protocol Highlights
 
-The core challenges solved include:
+Coordinates are normalized (0–1) for consistent scaling across devices.
 
-Real-time synchronization of drawing strokes across users
+destination-out is used for eraser mode (true pixel-level erasing).
 
-Global undo/redo with synchronized canvas state
+Undo/Redo and clear actions are synchronized by broadcasting base64 canvas snapshots.
 
-Managing eraser operations and clearing actions across users
+The system follows a broadcast-only design — no peer-to-peer connections.
 
-Maintaining performance even under frequent updates
+3️⃣ Undo/Redo Strategy (Global)
+Concept	Implementation
+Local History	Each client keeps undoStack and redoStack (max 20 snapshots).
+Snapshot Format	Each state is a DataURL of the canvas image.
+Undo	Pops the last canvas snapshot, restores previous image, emits canvasUpdate.
+Redo	Pushes forward from redoStack, restores image, emits canvasUpdate.
+Synchronization	The server rebroadcasts the updated canvas image to all clients for consistency.
+Global State	All connected users always share the same visual state (last writer wins).
 
-2. Data Flow Diagram
-Event Flow:
-+-------------+          +----------------+          +---------------+
-|   Browser A | <------> |   Node.js +    | <------> |   Browser B   |
-| (Canvas UI) |          |   Socket.io    |          | (Canvas UI)   |
-+-------------+          +----------------+          +---------------+
-       |                         |                          |
-       |   Draw Stroke Event     |                          |
-       |------------------------>|                          |
-       |                         | Broadcast draw event     |
-       |                         |------------------------->|
-       |                         |                          |
-       |     Canvas Updates      | <--- Undo/Redo/Sync ---->|
+Flow Example:
 
-       Step-by-step Flow
+User A clicks Undo →
+Removes local snapshot →
+Emits canvasUpdate →
+Server broadcasts new image →
+All clients restore same snapshot
 
-User starts drawing → client emits start event with position & ID.
-
-As the user moves → client emits draw events containing line segment data.
-
-Server receives draw → broadcasts it to all connected users.
-
-Other clients render the stroke immediately for real-time sync.
-
-When a user performs Undo/Redo, their canvas state (as a DataURL image) is sent via canvasUpdate and synced globally.
-
-On clear event, all canvases reset simultaneously.
-WebSocket Protocol
-Event Types & Payloads
-Event	Direction	Description	Example Payload
-connection	Server → Client	Acknowledges a new connection	{ userId: "socket123" }
-init	Server → Client	Sends full stroke history on join	[ {x1, y1, x2, y2, color, strokeWidth} ]
-start	Client → Server → Broadcast	Marks beginning of a new stroke	{ userId, x, y }
-draw	Client → Server → Broadcast	Sends line segments while drawing	{ userId, x1, y1, x2, y2, color, strokeWidth, tool }
-clear	Client → Server → All	Clears all canvases	{ }
-canvasUpdate	Client → Server → All	Synchronizes full canvas state (Undo/Redo)	{ image: <base64 string> }
-disconnect	Server → All	Announces a user leaving	{ userId }
-♻️ 4. Undo/Redo Strategy
-
-Undo/Redo is handled using canvas snapshots (DataURLs) stored locally on each client.
-
-Client-side Stacks
-
-undoStack stores up to 20 previous canvas states.
-
-redoStack temporarily stores undone states for reapplication.
-
-Synchronization
-
-Each Undo/Redo emits a canvasUpdate event with the entire canvas as a base64 image.
-
-All connected clients receive and re-render that image to maintain global consistency.
-
-⚡ 5. Performance Decisions
-Optimization	Reason
-Normalized coordinates (0–1)	Ensures consistent scaling across varying canvas sizes.
-Local drawing prediction	Each client draws instantly before network confirmation for a smooth UX.
-Path segments instead of per-pixel updates	Reduces WebSocket event frequency dramatically.
-Canvas snapshots limited to 20	Prevents excessive memory usage for Undo/Redo.
-Eraser uses destination-out composite mode	True pixel erasure without extra redraws or fill layers.
-⚔️ 6. Conflict Resolution
-Simultaneous Drawing
-
-Each user’s strokes are isolated using their socket.id.
-Even if two users draw at the same coordinates simultaneously:
-
-The canvas blends both paths naturally due to sequential rendering.
-
-The system doesn’t lock regions — real-time collaboration is prioritized over strict consistency.
-
-Undo/Redo Conflicts
-
-If two users undo simultaneously:
-
-The latest canvasUpdate event wins (last snapshot applied).
-
-Clients always render the most recent broadcast to maintain uniform state.
-
-This simple “last-writer-wins” approach ensures predictable user experience without complex merges.
-
-🧱 7. System Architecture Diagram
-             ┌─────────────────────────────┐
-             │         Browser UI          │
-             │  - Canvas (HTML5)           │
-             │  - Toolbar (Brush/Eraser)   │
-             │  - Undo/Redo Controls       │
-             └──────────┬──────────────────┘
-                        │ WebSocket Events
-                        ▼
-             ┌─────────────────────────────┐
-             │       Socket.io Server       │
-             │  - Receives draw/start/clear │
-             │  - Broadcasts to all clients │
-             │  - Manages connection state  │
-             └──────────┬──────────────────┘
-                        │ Broadcast
-                        ▼
-             ┌─────────────────────────────┐
-             │     Other Clients (xN)      │
-             │  - Render live strokes       │
-             │  - Apply undo/redo updates   │
-             └─────────────────────────────┘
-
-🧩 8. Key Architectural Decisions
-Component	Technology	Reason
-Frontend	Vanilla JS + Canvas API	Demonstrates low-level DOM and Canvas handling
-Backend	Node.js + Socket.io	Easy real-time communication and scalability
-No Database	Real-time transient data; no persistence required	
-Undo/Redo	DataURL snapshots	Simplifies synchronization
-Eraser	destination-out mode	True pixel removal for smooth erasing
-State Sharing	Socket Broadcasts	Keeps all clients in sync without polling
-
-
-🚀 9. Scalability Discussion
-
-For handling 1000+ concurrent users:
-
-Replace the in-memory drawing-state.js with a Redis Pub/Sub system.
-
-Introduce namespaced rooms (io.of('/room')) for segmented canvases.
-
-Use a Load Balancer + Sticky Sessions to distribute WebSocket connections.
-
-Optionally persist stroke deltas in MongoDB or S3 for replay and versioning.
+4️⃣ Performance Decisions
+Optimization	Description
+Normalized Coordinates (0–1)	Keeps drawings aligned across all screen sizes and resolutions.
+Client-side Prediction	User sees immediate strokes while network syncs in the background.
+Batching Stroke Data	Reduces WebSocket message frequency and prevents jitter.
+Canvas Snapshot Limit (20)	Prevents memory bloat while maintaining undo depth.
+destination-out Eraser	Removes pixels efficiently instead of repainting white.
+Efficient Re-render	Canvas clears and redraws only changed areas during updates.
+No External Drawing Libraries	Ensures full control over performance and behavior.
+5️⃣ Conflict Resolution
+Scenario	Resolution
+Two users draw simultaneously	Both strokes are drawn — stroke order defines final render.
+Undo/Redo conflict	The latest canvasUpdate event overwrites previous state (last-write-wins).
+Eraser Overlap	destination-out ensures deterministic erasure across clients.
+Late Joiners	Receive full canvas snapshot (init) and render immediately.
+6️⃣ Edge Cases & Handling
+Case	Handling Strategy
+Late Joiners	Server emits full stroke history (init) upon connection.
+Network Drop	Socket.io auto-reconnects; last canvasUpdate re-syncs full state.
+Resize Events	Canvas resizes responsively; strokes scaled consistently (normalized coordinates).
+Undo After Clear	Clear action is stored as a snapshot, so Undo restores previous canvas.
+Dropped Frames	Minor packet loss tolerated since next stroke/redo event re-synchronizes the state.
+7️⃣ Architectural Summary Diagram
+ ┌──────────────────────────────┐
+ │         Client (A)           │
+ │  - Canvas Drawing             │
+ │  - Undo/Redo Stack            │
+ │  - Color, Brush, Eraser Tools │
+ └──────────────┬───────────────┘
+                │  WebSocket
+                ▼
+ ┌──────────────────────────────┐
+ │        Node.js Server        │
+ │  - Socket.io Event Hub       │
+ │  - History & Sync Logic      │
+ │  - Global Undo/Redo Control  │
+ └──────────────┬───────────────┘
+                │ Broadcast
+                ▼
+ ┌──────────────────────────────┐
+ │         Client (B, C...)     │
+ │  - Mirror Real-time Updates  │
+ │  - Render Canvas in Sync     │
+ │  - Handle Global Actions     │
+ └──────────────────────────────┘
