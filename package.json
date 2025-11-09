@@ -1,13 +1,19 @@
 {
   "name": "collaborative-canvas",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Real-time collaborative drawing canvas using Node.js, Socket.IO, and HTML5 Canvas.",
+  "main": "server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server/server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "realtime",
+    "canvas",
+    "socket.io",
+    "collaborative",
+    "nodejs"
+  ],
+  "author": "Munnangi Sonu Sarojini",
   "license": "ISC",
   "dependencies": {
     "express": "^5.1.0",
