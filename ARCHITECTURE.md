@@ -79,27 +79,3 @@ All clients restore same snapshot
 • Socket auto-reconnect on network loss
 • Canvas auto-rescales on window resize
 • Undo works after clear (treated as snapshot)
-
-7️. Architectural Summary Diagram
- ┌──────────────────────────────┐
- │         Client (A)           │
- │  - Canvas Drawing             │
- │  - Undo/Redo Stack            │
- │  - Color, Brush, Eraser Tools │
- └──────────────┬───────────────┘
-                │  WebSocket
-                ▼
- ┌──────────────────────────────┐
- │        Node.js Server        │
- │  - Socket.io Event Hub       │
- │  - History & Sync Logic      │
- │  - Global Undo/Redo Control  │
- └──────────────┬───────────────┘
-                │ Broadcast
-                ▼
- ┌──────────────────────────────┐
- │         Client (B, C...)     │
- │  - Mirror Real-time Updates  │
- │  - Render Canvas in Sync     │
- │  - Handle Global Actions     │
- └──────────────────────────────┘
