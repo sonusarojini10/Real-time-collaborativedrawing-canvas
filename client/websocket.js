@@ -1,6 +1,9 @@
 const socket = io("https://real-time-collaborativedrawing-canvas-2.onrender.com", {
   transports: ["websocket"],
   withCredentials: true,
+   reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 2000,
 });
 
 const remoteUsers = {};
