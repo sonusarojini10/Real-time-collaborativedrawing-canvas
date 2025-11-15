@@ -1,4 +1,8 @@
-const socket = io("https://real-time-collaborativedrawing-canvas-2.onrender.com");
+const socket = io("https://real-time-collaborativedrawing-canvas-2.onrender.com", {
+  transports: ["websocket"],
+  withCredentials: true,
+});
+
 const remoteUsers = {};
 
 // 🟢 When another user starts a stroke
@@ -65,5 +69,8 @@ socket.on("canvasUpdate", ({ image }) => {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   };
   img.src = image;
+});
+socket.on("pingCheck", (data) => {
+  console.log("Server alive:", new Date(data.time).toLocaleTimeString());
 });
 

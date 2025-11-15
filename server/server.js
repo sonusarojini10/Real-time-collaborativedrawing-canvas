@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // you can tighten this later if needed
+    origin:["https://real-time-collaborativedrawing-canv.vercel.app"], // you can tighten this later if needed
     methods: ["GET", "POST"]
   }
 });
@@ -46,4 +46,11 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+setInterval(() => {
+  io.emit("pingCheck", { time: Date.now() });
+}, 25000); // keep socket active
+
